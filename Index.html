@@ -1,0 +1,1793 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Harvest &amp; Co Scheduling</title>
+<link rel="preconnect" href="https://fonts.googleapis.com/">
+<link href="Index_files/css2.css" rel="stylesheet">
+<style>
+:root {
+  --green-900:#1a2e1a;--green-800:#213621;--green-700:#2d4a2d;--green-600:#3a5f3a;
+  --green-500:#4a7c4a;--green-400:#6a9e6a;--green-300:#8fbe8f;--green-100:#e8f2e8;--green-50:#f2f8f2;
+  --warm-900:#2a2520;--warm-700:#5a5248;--warm-500:#8a7e72;--warm-300:#c4bbb2;--warm-100:#f0ece8;--warm-50:#f8f6f4;
+  --amber:#d4860a;--amber-lt:#fef3dc;--red:#c0392b;--red-lt:#fdecea;--blue:#2563a8;--blue-lt:#deeaf8;
+  --border:#ddd8d2;--font-sans:'DM Sans',sans-serif;--font-mono:'DM Mono',monospace;
+  --radius-sm:4px;--radius:8px;--radius-lg:12px;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.08);--shadow:0 2px 8px rgba(0,0,0,0.10);--shadow-lg:0 4px 24px rgba(0,0,0,0.14);
+  --panel-w:380px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font-sans);background:var(--warm-50);color:var(--warm-900);min-height:100vh;font-size:14px;line-height:1.5;}
+
+/* LOADING */
+#loading-screen{position:fixed;inset:0;background:var(--green-800);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:9999;}
+.loading-logo{font-size:24px;font-weight:600;color:var(--green-300);}
+.loading-logo span{color:white;}
+.loading-dots{display:flex;gap:6px;}
+.loading-dots i{width:7px;height:7px;background:var(--green-400);border-radius:50%;animation:dot-pulse 1.2s ease-in-out infinite;}
+.loading-dots i:nth-child(2){animation-delay:0.2s;}.loading-dots i:nth-child(3){animation-delay:0.4s;}
+@keyframes dot-pulse{0%,80%,100%{opacity:.3;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+
+/* APP SHELL */
+#app{display:flex;flex-direction:column;min-height:100vh;}
+.topbar{background:var(--green-800);color:white;display:flex;align-items:center;padding:0 24px;height:56px;gap:16px;box-shadow:0 2px 8px rgba(0,0,0,0.2);position:sticky;top:0;z-index:200;}
+.topbar-brand{font-size:15px;font-weight:600;letter-spacing:0.02em;color:var(--green-300);}
+.topbar-brand span{color:white;}
+.topbar-dc{display:flex;align-items:center;gap:8px;margin-left:8px;}
+.topbar-dc label{font-size:12px;color:var(--green-300);font-weight:500;}
+.dc-select{background:var(--green-700);border:1px solid var(--green-600);color:white;padding:5px 10px;border-radius:var(--radius-sm);font-family:var(--font-sans);font-size:13px;cursor:pointer;outline:none;}
+.dc-select:focus{border-color:var(--green-300);}
+.topbar-cal-filters{display:flex;align-items:center;gap:8px;margin-left:8px;padding-left:12px;border-left:1px solid var(--green-600);}
+.topbar-cal-filters label{font-size:12px;color:var(--green-300);font-weight:500;}
+.topbar-nav{display:flex;gap:2px;margin-left:auto;}
+.nav-btn{background:none;border:none;color:rgba(255,255,255,0.65);padding:6px 14px;border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font-sans);font-size:13px;font-weight:500;transition:all 0.15s;}
+.nav-btn:hover{background:var(--green-700);color:white;}
+.nav-btn.active{background:var(--green-600);color:white;}
+.topbar-user{font-size:12px;color:var(--green-300);margin-left:8px;padding-left:16px;border-left:1px solid var(--green-600);}
+.topbar-switch-view{font-size:12px;color:var(--green-300);background:none;border:1px solid var(--green-600);border-radius:6px;padding:5px 10px;margin-left:8px;cursor:pointer;}
+.topbar-switch-view:hover{color:white;border-color:var(--green-300);}
+
+.info-section{margin-bottom:20px;}
+.info-section:last-child{margin-bottom:0;}
+.info-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--warm-500);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.info-status-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;font-size:13px;}
+.info-link{display:inline-flex;align-items:center;gap:6px;color:var(--green-700);text-decoration:none;font-size:13px;font-weight:500;padding:8px 12px;background:var(--green-50);border:1px solid var(--green-200);border-radius:var(--radius-sm);margin-bottom:8px;width:100%;}
+.info-link:hover{background:var(--green-100);}
+.main{flex:1;padding:24px;width:100%;}
+.tab-panel{display:none;}.tab-panel.active{display:block;}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:var(--radius-sm);font-family:var(--font-sans);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all 0.15s;}
+.btn-primary{background:var(--green-600);color:white;}.btn-primary:hover{background:var(--green-700);}
+.btn-secondary{background:white;color:var(--warm-700);border:1px solid var(--border);}.btn-secondary:hover{background:var(--warm-50);}
+.btn-danger{background:var(--red);color:white;}.btn-danger:hover{background:#a93226;}
+.btn-warning{background:var(--amber);color:white;}.btn-warning:hover{background:#b8720a;}
+.btn-status-scheduled{background:#4a7fa5;color:white;border:none;}.btn-status-scheduled:hover{background:#3a6a8e;}.btn-status-scheduled:active{background:#2d5570;transform:scale(0.97);}
+.btn-status-confirmed{background:var(--green-600);color:white;border:none;}.btn-status-confirmed:hover{background:var(--green-700);}.btn-status-confirmed:active{background:#1a5c35;transform:scale(0.97);}
+.btn-status-completed{background:#2d6a6a;color:white;border:none;}.btn-status-completed:hover{background:#235454;}.btn-status-completed:active{background:#1a3f3f;transform:scale(0.97);}
+.btn-status-cancelled{background:var(--amber);color:white;border:none;}.btn-status-cancelled:hover{background:#b8720a;}.btn-status-cancelled:active{background:#8f5508;transform:scale(0.97);}
+.btn:active{transform:scale(0.97);}.btn{transition:background 0.15s, transform 0.1s;}
+.btn-sm{padding:4px 10px;font-size:12px;}
+.icon-btn{background:white;border:1px solid var(--border);width:32px;height:32px;border-radius:var(--radius-sm);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--warm-700);transition:all 0.15s;box-shadow:var(--shadow-sm);}
+.icon-btn:hover{background:var(--green-50);border-color:var(--green-400);color:var(--green-700);}
+
+/* SCHEDULE LAYOUT */
+.schedule-layout{display:flex;gap:0;align-items:flex-start;}
+.calendar-section{flex:1;min-width:0;transition:margin-right 0.3s ease;}
+.schedule-layout.panel-open .calendar-section{margin-right:calc(var(--panel-w) + 8px);}
+
+/* MONTH CALENDAR */
+.month-nav{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.month-label{font-size:18px;font-weight:600;color:var(--green-800);min-width:200px;}
+.cal-dow-headers{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;}
+.cal-dow-header{text-align:center;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--warm-500);padding:4px 0;}
+.month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-cell{background:white;border:1px solid var(--border);border-radius:var(--radius-sm);min-height:96px;padding:6px;cursor:pointer;transition:all 0.15s;overflow:hidden;}
+.cal-cell:hover{border-color:var(--green-400);background:var(--green-50);}
+.cal-cell.other-month{background:var(--warm-50);opacity:0.5;}
+.cal-cell.today{border-color:var(--green-500);border-width:2px;}
+.cal-cell.selected{border-color:var(--green-600);border-width:2px;background:var(--green-50);box-shadow:0 0 0 3px rgba(58,95,58,0.12);}
+.cal-cell.weekend{background:#fafdf8;}
+.cal-cell-date{font-size:13px;font-weight:600;color:var(--warm-700);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;}
+.cal-date-num{width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;}
+.cal-cell.today .cal-date-num{background:var(--green-600);color:white;border-radius:50%;}
+.cal-cell.other-month .cal-date-num{color:var(--warm-300);}
+.cal-entry-count{font-size:10px;font-weight:600;color:var(--green-600);background:var(--green-100);border-radius:10px;padding:1px 6px;}
+.cal-chips{display:flex;flex-direction:column;gap:2px;}
+.cal-chip{border-radius:3px;padding:2px 5px;font-size:10px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;}
+.prod-color-0{background:#dbeafe;color:#1e40af;}
+.prod-color-1{background:#dcfce7;color:#166534;}
+.prod-color-2{background:#fef3c7;color:#92400e;}
+.prod-color-3{background:#fce7f3;color:#9d174d;}
+.prod-color-4{background:#ede9fe;color:#5b21b6;}
+.prod-color-5{background:#ffedd5;color:#9a3412;}
+.prod-color-6{background:#d1fae5;color:#065f46;}
+.prod-color-7{background:#fee2e2;color:#991b1b;}
+.prod-color-done{background:var(--warm-100);color:var(--warm-500);}
+.prod-color-cancelled{background:#f1f5f9;color:#94a3b8;text-decoration:line-through;}
+.cal-overflow{font-size:10px;color:var(--warm-500);padding:1px 4px;}
+
+/* SIDE PANEL */
+.side-panel{position:fixed;top:56px;right:0;width:var(--panel-w);height:calc(100vh - 56px);background:white;border-left:1px solid var(--border);box-shadow:var(--shadow-lg);display:flex;flex-direction:column;transform:translateX(100%);transition:transform 0.3s ease;z-index:150;overflow:hidden;}
+.side-panel.open{transform:translateX(0);}
+.panel-header{padding:14px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--green-800);color:white;}
+.panel-date-label{font-size:14px;font-weight:600;color:white;}
+.panel-close{background:none;border:none;color:rgba(255,255,255,0.7);font-size:20px;cursor:pointer;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);transition:background 0.15s;}
+.panel-close:hover{background:var(--green-700);}
+.panel-body{flex:1;overflow-y:auto;display:flex;flex-direction:column;}
+.panel-existing{padding:12px 14px;border-bottom:1px solid var(--border);background:var(--warm-50);flex-shrink:0;}
+.panel-existing-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--warm-500);margin-bottom:8px;}
+.panel-existing-empty{font-size:12px;color:var(--warm-300);font-style:italic;}
+.existing-entry{display:flex;align-items:flex-start;gap:8px;padding:7px 9px;background:white;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:4px;cursor:pointer;transition:background 0.1s;}
+.existing-entry:hover{background:var(--green-50);border-color:var(--green-300);}
+.existing-entry:last-child{margin-bottom:0;}
+.existing-chef-dot{width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0;}
+.existing-entry-info{flex:1;min-width:0;}
+.existing-chef-name{font-size:12px;font-weight:600;color:var(--warm-900);}
+.existing-store-name{font-size:11px;color:var(--warm-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.existing-products{font-size:10px;color:var(--green-600);margin-top:1px;font-style:italic;}
+.existing-status{flex-shrink:0;}
+.panel-form{padding:14px;flex:1;}
+.panel-form-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--warm-500);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.form-row{margin-bottom:12px;}
+.form-row label{display:block;font-size:11px;font-weight:600;color:var(--warm-700);margin-bottom:4px;letter-spacing:0.03em;text-transform:uppercase;}
+.form-row-2col{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.form-control{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font-sans);font-size:13px;color:var(--warm-900);background:white;transition:border-color 0.15s;outline:none;}
+.form-control:focus{border-color:var(--green-500);box-shadow:0 0 0 3px rgba(74,124,74,0.1);}
+.form-control[readonly]{background:var(--warm-50);color:var(--warm-500);}
+.conflict-warn{background:var(--amber-lt);border:1px solid #f0c060;border-radius:var(--radius-sm);padding:6px 9px;font-size:11px;color:var(--amber);margin-top:4px;display:none;}
+.conflict-warn.visible{display:block;}
+.product-checkboxes{display:flex;flex-direction:column;gap:3px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px;max-height:150px;overflow-y:auto;}
+.product-cb-item{display:flex;align-items:center;gap:7px;padding:4px 5px;border-radius:var(--radius-sm);cursor:pointer;transition:background 0.1s;}
+.product-cb-item:hover{background:var(--green-50);}
+.product-cb-item input{accent-color:var(--green-600);width:14px;height:14px;cursor:pointer;}
+.product-cb-item span{font-size:12px;color:var(--warm-900);}
+.panel-footer{padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;}
+.panel-footer .btn{flex:1;justify-content:center;}
+
+/* STATUS BADGES */
+.status-badge{display:inline-block;font-size:9px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;padding:1px 5px;border-radius:2px;}
+.status-scheduled{background:var(--blue-lt);color:var(--blue);}
+.status-confirmed{background:#d1fae5;color:#065f46;}
+.status-completed{background:var(--warm-100);color:var(--warm-500);}
+.status-cancelled{background:#f1f5f9;color:#94a3b8;}
+
+/* ROSTER */
+.roster-tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--warm-100);padding:4px;border-radius:var(--radius);width:fit-content;}
+.roster-tab{padding:6px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--warm-700);font-family:var(--font-sans);transition:all 0.15s;}
+.roster-tab.active{background:white;color:var(--green-800);box-shadow:var(--shadow-sm);}
+.roster-controls{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;}
+.roster-search{flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--warm-300);border-radius:var(--radius-sm);font-family:var(--font-sans);font-size:13px;background:white;color:var(--warm-900);}
+.roster-search:focus{outline:none;border-color:var(--green-600);}
+.roster-region-filter{padding:7px 10px;border:1px solid var(--warm-300);border-radius:var(--radius-sm);font-family:var(--font-sans);font-size:13px;background:white;color:var(--warm-900);}
+.roster-region-filter:focus{outline:none;border-color:var(--green-600);}
+.data-table-wrap{background:white;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm);overflow-x:auto;}
+.data-table{width:100%;border-collapse:collapse;font-size:13px;}
+.data-table th{background:var(--warm-50);padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--warm-500);border-bottom:1px solid var(--border);}
+.data-table td{padding:10px 14px;border-bottom:1px solid var(--warm-50);color:var(--warm-900);vertical-align:middle;}
+.data-table tr:last-child td{border-bottom:none;}
+.data-table tr:hover td{background:var(--green-50);}
+.data-table tr.inactive td{opacity:0.5;}
+.active-dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+.active-dot.on{background:var(--green-500);}.active-dot.off{background:var(--warm-300);}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.section-title{font-size:15px;font-weight:600;color:var(--green-800);}
+
+/* CHEF VIEW */
+.chef-view-tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--warm-100);padding:4px;border-radius:var(--radius);width:fit-content;}
+.chef-view-tab{padding:6px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--warm-700);font-family:var(--font-sans);transition:all 0.15s;}
+.chef-view-tab.active{background:white;color:var(--green-800);box-shadow:var(--shadow-sm);}
+.chef-header{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:16px;box-shadow:var(--shadow-sm);}
+.chef-avatar{width:48px;height:48px;background:var(--green-600);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;color:white;}
+.chef-name-display{font-size:18px;font-weight:600;color:var(--green-800);}
+.chef-meta{font-size:13px;color:var(--warm-500);margin-top:2px;}
+.schedule-list{display:flex;flex-direction:column;gap:8px;}
+.schedule-card{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;display:grid;grid-template-columns:80px 1fr;align-items:start;gap:16px;box-shadow:var(--shadow-sm);}
+.schedule-card.past{opacity:0.6;}
+.schedule-card.cancelled{opacity:0.4;}
+.scard-date{text-align:center;}
+.scard-month{font-size:10px;font-weight:600;text-transform:uppercase;color:var(--warm-500);letter-spacing:0.08em;}
+.scard-day{font-size:28px;font-weight:300;color:var(--green-800);font-family:var(--font-mono);line-height:1;}
+.scard-weekday{font-size:10px;color:var(--warm-500);}
+.scard-time{font-size:11px;color:var(--green-600);font-weight:600;margin-top:3px;}
+
+/* Chef profile form */
+.profile-card{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow-sm);max-width:480px;}
+.profile-section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--warm-500);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+
+/* ── MOBILE — Chef view only ─────────────────────────────────
+   Applies only on screens narrower than 600px.
+   Operator calendar/roster/panel are unaffected. */
+@media (max-width: 600px) {
+  /* Tighter main padding on small screens */
+  .main { padding: 12px; }
+
+  /* Topbar — stack brand and user email, hide DC selector label */
+  .topbar { padding: 0 14px; gap: 10px; }
+  .topbar-brand { font-size: 13px; }
+  .topbar-user { font-size: 11px; padding-left: 10px; }
+
+  /* Chef header — tighter padding, smaller avatar */
+  .chef-header { padding: 14px 16px; gap: 12px; margin-bottom: 14px; }
+  .chef-avatar { width: 40px; height: 40px; font-size: 16px; }
+  .chef-name-display { font-size: 16px; }
+  .chef-meta { font-size: 12px; }
+
+  /* Chef view tabs — full width, equal split */
+  .chef-view-tabs { width: 100%; }
+  .chef-view-tab { flex: 1; text-align: center; padding: 8px 0; font-size: 13px; }
+
+  /* Schedule cards — keep two-column layout but tighten spacing */
+  .schedule-card { padding: 12px 14px; gap: 12px; grid-template-columns: 64px 1fr; }
+  .scard-day { font-size: 24px; }
+  .scard-month { font-size: 9px; }
+  .scard-weekday { font-size: 9px; }
+  .scard-time { font-size: 10px; }
+
+  /* Schedule list — tighter gap between cards */
+  .schedule-list { gap: 6px; }
+
+  /* Profile card — full width, less padding */
+  .profile-card { max-width: 100%; padding: 16px; }
+
+  /* Form controls — larger touch targets */
+  .form-control { padding: 10px 12px; font-size: 15px; }
+  select.form-control { padding: 10px 12px; }
+  textarea.form-control { font-size: 15px; }
+
+  /* Save button — full width on mobile */
+  #prof-save-btn { width: 100%; justify-content: center; padding: 12px; font-size: 15px; }
+
+  /* Toast — full width at bottom */
+  .toast-container { left: 12px; right: 12px; bottom: 16px; }
+  .toast { max-width: 100%; }
+}
+
+/* MODALS */
+.modal-overlay{position:fixed;inset:0;background:rgba(26,46,26,0.5);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:300;opacity:0;pointer-events:none;transition:opacity 0.2s;}
+.modal-overlay.open{opacity:1;pointer-events:all;}
+.modal{background:white;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;transform:translateY(8px);transition:transform 0.2s;}
+.modal-overlay.open .modal{transform:translateY(0);}
+.modal-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-size:16px;font-weight:600;color:var(--green-800);}
+.modal-close{background:none;border:none;font-size:20px;color:var(--warm-500);cursor:pointer;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);transition:background 0.15s;}
+.modal-close:hover{background:var(--warm-100);}
+.modal-body{padding:20px 24px;}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
+.detail-row{display:flex;align-items:baseline;gap:8px;margin-bottom:10px;font-size:13px;}
+.detail-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--warm-500);min-width:90px;}
+
+/* TOAST */
+.toast-container{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:8px;z-index:2000;}
+.toast{background:var(--green-800);color:white;padding:12px 18px;border-radius:var(--radius);font-size:13px;box-shadow:var(--shadow-lg);animation:toast-in 0.25s ease;max-width:320px;}
+.toast.error{background:var(--red);}
+@keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.dc-required-msg{background:var(--amber-lt);border:1px solid #f0c060;border-radius:var(--radius);padding:16px 20px;font-size:14px;color:var(--amber);font-weight:500;}
+.empty-state{text-align:center;padding:48px 24px;color:var(--warm-500);}
+.empty-title{font-size:15px;font-weight:600;color:var(--warm-700);margin-bottom:4px;}
+
+
+
+/* DEMO INTRO MODAL */
+.demo-overlay{position:fixed;inset:0;background:rgba(15,25,15,0.72);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:10000;padding:16px;}
+.demo-modal{background:white;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);width:560px;max-width:100%;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;}
+.demo-modal-header{background:var(--green-800);padding:28px 32px 24px;border-radius:var(--radius-lg) var(--radius-lg) 0 0;}
+.demo-modal-brand{font-size:13px;font-weight:600;letter-spacing:0.1em;color:var(--green-400);text-transform:uppercase;margin-bottom:6px;}
+.demo-modal-brand span{color:white;}
+.demo-modal-tag{display:inline-block;font-size:11px;font-weight:500;color:var(--green-300);background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:3px 10px;margin-bottom:0;}
+.demo-modal-body{padding:28px 32px;}
+.demo-modal-body p{font-size:14px;color:var(--warm-700);line-height:1.75;margin-bottom:14px;}
+.demo-modal-body p:last-of-type{margin-bottom:0;}
+.demo-modal-divider{height:1px;background:var(--border);margin:20px 0;}
+.demo-modal-cta{font-size:13px;font-weight:600;color:var(--green-800);margin-bottom:14px;}
+.demo-modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.demo-role-btn{display:flex;flex-direction:column;align-items:flex-start;padding:14px 16px;border-radius:var(--radius);border:2px solid var(--border);background:white;cursor:pointer;font-family:var(--font-sans);transition:all 0.15s;text-align:left;}
+.demo-role-btn:hover{border-color:var(--green-500);background:var(--green-50);}
+.demo-role-btn.operator:hover{border-color:var(--green-600);}
+.demo-role-btn.chef:hover{border-color:#2d6a6a;}
+.demo-role-icon{font-size:20px;margin-bottom:6px;}
+.demo-role-title{font-size:13px;font-weight:600;color:var(--warm-900);margin-bottom:2px;}
+.demo-role-desc{font-size:11px;color:var(--warm-500);line-height:1.4;}
+.demo-modal-footer{padding:0 32px 20px;font-size:11px;color:var(--warm-400);text-align:center;}
+@media(max-width:500px){
+  .demo-modal-header{padding:20px 20px 18px;}
+  .demo-modal-body{padding:20px 20px;}
+  .demo-modal-actions{grid-template-columns:1fr;}
+  .demo-modal-footer{padding:0 20px 16px;}
+}
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="loading-logo">HARVEST &amp; CO <span>SCHEDULING</span></div>
+  <div class="loading-dots"><i></i><i></i><i></i></div>
+</div>
+
+<div id="app" style="display:none">
+  <header class="topbar">
+    <div class="topbar-brand">HARVEST &amp; CO <span>SCHEDULING</span></div>
+    <div class="topbar-dc" id="dc-selector" style="display:none">
+      <label>Region</label>
+      <select class="dc-select" id="dc-select" onchange="onDCChange(this.value)">
+      </select>
+    </div>
+    <div class="topbar-cal-filters" id="cal-filters" style="display:none">
+      <label>Chef</label>
+      <select class="dc-select" id="cal-filter-chef" onchange="applyCalendarFilter()">
+        <option value="" selected="selected">All Chefs</option>
+      </select>
+      <label>Product</label>
+      <select class="dc-select" id="cal-filter-product" onchange="applyCalendarFilter()">
+        <option value="" selected="selected">All Products</option>
+      </select>
+    </div>
+    <nav class="topbar-nav" id="main-nav"></nav>
+    <div class="topbar-user" id="topbar-user"></div>
+    <button class="topbar-switch-view" id="topbar-switch-view" onclick="exitDemoView()" style="display:none">Switch View</button>
+  </header>
+
+  <main class="main">
+
+    <!-- SCHEDULE TAB -->
+    <div class="tab-panel" id="tab-schedule">
+      <div id="schedule-dc-required" class="dc-required-msg" style="display:none">Please select a Distribution Center above to view the schedule.</div>
+      <div id="schedule-content" style="display:none">
+        <div class="schedule-layout" id="schedule-layout">
+          <div class="calendar-section">
+            <div class="month-nav">
+              <button class="icon-btn" onclick="changeMonth(-1)">‹</button>
+              <div class="month-label" id="month-label"></div>
+              <button class="icon-btn" onclick="changeMonth(1)">›</button>
+              <button class="btn btn-secondary btn-sm" onclick="goToToday()">Today</button>
+            </div>
+            <div class="cal-dow-headers">
+              <div class="cal-dow-header">Mon</div><div class="cal-dow-header">Tue</div>
+              <div class="cal-dow-header">Wed</div><div class="cal-dow-header">Thu</div>
+              <div class="cal-dow-header">Fri</div><div class="cal-dow-header">Sat</div>
+              <div class="cal-dow-header">Sun</div>
+            </div>
+            <div class="month-grid" id="month-grid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROSTER TAB -->
+    <div class="tab-panel" id="tab-roster">
+      <div class="roster-tabs">
+        <button class="roster-tab active" onclick="switchRosterTab('chefs',this)">Chefs</button>
+        <button class="roster-tab" onclick="switchRosterTab('stores',this)">Stores</button>
+        <button class="roster-tab" onclick="switchRosterTab('products',this)">Products</button>
+      </div>
+      <div id="roster-chefs">
+        <div class="roster-controls">
+          <input class="roster-search" id="search-chefs" placeholder="Search by name, email, ID..." oninput="populateRosterTables()">
+          <button class="btn btn-primary btn-sm" onclick="openDimModal('chef')">+ Add Chef</button>
+        </div>
+        <div class="data-table-wrap"><table class="data-table"><thead><tr><th>ID</th><th>Name</th><th>Region</th><th>Type</th><th>Email</th><th>Phone</th><th>Active</th><th></th></tr></thead><tbody id="tbody-chefs"></tbody></table></div>
+      </div>
+      <div id="roster-stores" style="display:none">
+        <div class="roster-controls">
+          <input class="roster-search" id="search-stores" placeholder="Search by name, city, ID..." oninput="populateRosterTables()">
+          <button class="btn btn-primary btn-sm" onclick="openDimModal('store')">+ Add Store</button>
+        </div>
+        <div class="data-table-wrap"><table class="data-table"><thead><tr><th>ID</th><th>Name</th><th>Region</th><th>DC</th><th>City</th><th>State</th><th>Active</th><th></th></tr></thead><tbody id="tbody-stores"></tbody></table></div>
+      </div>
+      <div id="roster-products" style="display:none">
+        <div class="roster-controls">
+          <input class="roster-search" id="search-products" placeholder="Search by name or ID..." oninput="populateRosterTables()">
+          <button class="btn btn-primary btn-sm" onclick="openDimModal('product')">+ Add Product</button>
+        </div>
+        <div class="data-table-wrap"><table class="data-table"><thead><tr><th>ID</th><th>Product Name</th><th>Active From</th><th>Active Until</th><th>Status</th><th></th></tr></thead><tbody id="tbody-products"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- CHEF VIEW TAB -->
+    <div class="tab-panel" id="tab-myschedule">
+      <div class="chef-header" id="chef-header"></div>
+      <div class="chef-view-tabs">
+        <button class="chef-view-tab active" id="cvt-schedule" onclick="switchChefTab('schedule',this)">My Schedule</button>
+        <button class="chef-view-tab" id="cvt-profile" onclick="switchChefTab('profile',this)">My Info</button>
+      </div>
+      <div id="chef-tab-schedule">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+          <button class="btn btn-secondary btn-sm" id="chef-hide-completed-btn" onclick="toggleChefCompleted()">Hide Completed</button>
+        </div>
+        <div class="schedule-list" id="chef-schedule-list"></div>
+      </div>
+      <div id="chef-tab-profile" style="display:none">
+        <div class="profile-card">
+          <div class="profile-section-title">My Information</div>
+          <p style="font-size:12px;color:var(--warm-500);margin-bottom:16px">Update
+ your contact details, coat size, and availability preferences. Name, 
+email, DC, and chef type can only be updated by your manager.</p>
+          <div class="form-row"><label>Name</label><input class="form-control" id="prof-name" readonly="readonly"></div>
+          <div class="form-row"><label>Email</label><input class="form-control" id="prof-email" readonly="readonly"></div>
+          <div class="form-row"><label>Home Region</label><input class="form-control" id="prof-dc" readonly="readonly"></div>
+          <div class="form-row"><label>Chef Type</label><input class="form-control" id="prof-type" readonly="readonly"></div>
+          <div class="form-row"><label>Phone</label><input class="form-control" id="prof-phone" placeholder="e.g. 503-555-1234"></div>
+          <div class="form-row"><label>Address</label><input class="form-control" id="prof-address" placeholder="Street address"></div>
+          <div class="form-row"><label>Coat Size</label>
+            <select class="form-control" id="prof-coat">
+              <option value="" selected="selected">Select...</option>
+            </select>
+          </div>
+          <div class="form-row"><label>Availability / Notes</label>
+            <textarea class="form-control" id="prof-availability" rows="3" placeholder="Days off, preferences, notes..."></textarea>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button class="btn btn-primary" onclick="saveChefProfile()" id="prof-save-btn">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- SIDE PANEL -->
+<div class="side-panel" id="side-panel">
+  <div class="panel-header">
+    <div class="panel-date-label" id="panel-date-label">—</div>
+    <button class="panel-close" onclick="closePanel()">×</button>
+  </div>
+  <div class="panel-body">
+    <div class="panel-existing">
+      <div class="panel-existing-title">Already Scheduled This Day</div>
+      <div id="panel-existing-list"><div class="panel-existing-empty">No bookings yet</div></div>
+    </div>
+    <div class="panel-form">
+      <div class="panel-form-title">Add New Entry</div>
+      <!-- DC is inherited from the topbar selector — no separate input needed -->
+      <div style="font-size:11px;color:var(--warm-500);margin-bottom:12px;padding:6px 8px;background:var(--warm-50);border-radius:var(--radius-sm);border:1px solid var(--border)">
+        Scheduling for Region: <strong id="entry-dc-display" style="color:var(--green-800)"></strong>
+      </div>
+      <div class="form-row">
+        <label>Store</label>
+        <select class="form-control" id="entry-store" onchange="checkStoreConflict()"></select>
+        <div class="conflict-warn" id="store-conflict-warn"></div>
+      </div>
+      <div class="form-row">
+        <label>Chef</label>
+        <select class="form-control" id="entry-chef" onchange="checkChefConflict()"></select>
+        <div class="conflict-warn" id="chef-conflict-warn"></div>
+      </div>
+      <div class="form-row">
+        <label>Products</label>
+        <div class="product-checkboxes" id="entry-products"></div>
+      </div>
+      <div class="form-row-2col">
+        <div>
+          <label style="display:block;font-size:11px;font-weight:600;color:var(--warm-700);margin-bottom:4px;text-transform:uppercase">Start Time</label>
+          <input type="time" class="form-control" id="entry-time-start" value="10:00">
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;font-weight:600;color:var(--warm-700);margin-bottom:4px;text-transform:uppercase">End Time</label>
+          <input type="time" class="form-control" id="entry-time-end" value="18:00">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Status</label>
+        <select class="form-control" id="entry-status">
+          <option value="Scheduled" selected="selected">Scheduled</option>
+          <option value="Confirmed">Confirmed</option>
+          <option value="Completed">Completed</option>
+          <option value="Cancelled">Cancelled</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Notes</label>
+        <textarea class="form-control" id="entry-notes" rows="2" placeholder="Optional notes..."></textarea>
+      </div>
+    </div>
+  </div>
+  <div class="panel-footer">
+    <button class="btn btn-secondary" onclick="closePanel()">Cancel</button>
+    <button class="btn btn-primary" id="panel-save-btn" onclick="submitEntry()">Save Entry</button>
+  </div>
+</div>
+
+<!-- MODAL: Entry Detail -->
+<div class="modal-overlay" id="modal-detail">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">Schedule Entry</div><button class="modal-close" onclick="closeModal('modal-detail')">×</button></div>
+    <div class="modal-body" id="detail-body"></div>
+    <div class="modal-footer" id="detail-footer"></div>
+  </div>
+</div>
+
+<!-- MODAL: Dim Record -->
+<div class="modal-overlay" id="modal-dim">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="dim-modal-title">Add Record</div><button class="modal-close" onclick="closeModal('modal-dim')">×</button></div>
+    <div class="modal-body" id="dim-modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-dim')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitDim()" id="dim-submit-btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Info / Help -->
+<div class="modal-overlay" id="modal-info">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Help &amp; Information</div>
+      <button class="modal-close" onclick="closeModal('modal-info')">×</button>
+    </div>
+    <div class="modal-body" id="info-modal-body">
+
+      <div class="info-section">
+        <div class="info-section-title">Demo Status Definitions</div>
+        <div class="info-status-row"><span class="status-badge status-scheduled">Scheduled</span><span>Demo has been booked but not yet confirmed by the manager.</span></div>
+        <div class="info-status-row"><span class="status-badge status-confirmed">Confirmed</span><span>Demo is confirmed. Chef should attend and can submit a survey.</span></div>
+        <div class="info-status-row"><span class="status-badge status-completed">Completed</span><span>Demo has taken place and the post-demo survey has been submitted.</span></div>
+        <div class="info-status-row"><span class="status-badge status-cancelled">Cancelled</span><span>Demo has been cancelled and will not take place.</span></div>
+        <div class="info-status-row"><span class="status-badge" style="background:var(--warm-100);color:var(--warm-500)">Deleted</span><span>Entry has been removed. Only visible to administrators.</span></div>
+      </div>
+
+      <div class="info-section" id="info-support-section">
+        <div class="info-section-title">Support</div>
+        <p style="font-size:13px;color:var(--warm-700)">For app issues or access requests contact: <a href="mailto:alex80ad@gmail.com" style="color:var(--green-700);font-weight:500">alex80ad@gmail.com</a></p>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="closeModal('modal-info')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- DEMO INTRO MODAL -->
+<div class="demo-overlay" id="demo-overlay">
+  <div class="demo-modal">
+    <div class="demo-modal-header">
+      <div class="demo-modal-brand">HARVEST &amp; CO <span>SCHEDULING</span></div>
+      <span class="demo-modal-tag">Portfolio Demo</span>
+    </div>
+    <div class="demo-modal-body">
+      <p>Harvest &amp; Co is a specialty produce company that sends field chefs to grocery stores across the country to run live product demos. Coordinating dozens of chefs, hundreds of store locations, and multiple regional distribution centers requires more than a spreadsheet.</p>
+      <p>This app manages that operation end to end. Regional operators book demos and assign chefs to stores and products. Chefs log in from their phone to see their upcoming schedule, store addresses, and product info for each visit. Entries move through a status workflow — Scheduled, Confirmed, Completed, or Cancelled — so chefs always know what is locked in versus still pending.</p>
+      <p>Choose a view to explore the app from each perspective.</p>
+      <div class="demo-modal-divider"></div>
+      <div class="demo-modal-cta">How would you like to explore?</div>
+      <div class="demo-modal-actions">
+        <button class="demo-role-btn operator" onclick="enterDemoAs('operator')">
+          <span class="demo-role-icon">📋</span>
+          <span class="demo-role-title">View as Operator</span>
+          <span class="demo-role-desc">Book demos, manage the calendar, and edit the full roster of chefs, stores, and products</span>
+        </button>
+        <button class="demo-role-btn chef" onclick="enterDemoAs('chef')">
+          <span class="demo-role-icon">👨‍🍳</span>
+          <span class="demo-role-title">View as Chef</span>
+          <span class="demo-role-desc">See an upcoming demo schedule, store details, and product info as a field chef would</span>
+        </button>
+      </div>
+    </div>
+    <div class="demo-modal-footer">Write operations are disabled in demo mode</div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ============================================================
+// HOW THIS FILE IS ORGANIZED
+// ============================================================
+// 1. Color system    — product color assignment for calendar chips
+// 2. STATE           — all runtime data in one object
+// 3. Init            — startup sequence, calls server on load
+// 4. Denied view     — shown to unauthorized users
+// 5. Operator view   — calendar, side panel, roster
+// 6. Month calendar  — builds the grid, handles navigation
+// 7. Side panel      — slides in when a day is clicked;
+//                      shows existing bookings + new entry form
+// 8. Detail modal    — edit/reschedule/cancel/delete an entry
+// 9. Chef view       — read-only schedule + self-edit profile
+// 10. Roster         — add/edit chefs, stores, products
+// 11. Helpers        — modals, toasts, error handling
+//
+// HOW THE APP TALKS TO THE SERVER:
+// Every server call uses this pattern:
+//   google.script.run
+//     .withSuccessHandler(function(result) { /* use result */ })
+//     .withFailureHandler(function(err) { handleError(err); })
+//     .serverFunctionName(arg1, arg2);
+//
+// This is asynchronous — the browser doesn't freeze while waiting.
+// The withSuccessHandler runs when the server responds.
+//
+// KEY CONCEPT — STATE OBJECT:
+// All runtime data lives in STATE so any function can access it.
+// When debugging, type STATE in the browser console to inspect it.
+// ============================================================
+
+
+// ── PRODUCT COLOR SYSTEM ──────────────────────────────────────
+// Each product gets a consistent color across the entire calendar.
+// Colors are assigned in the order products first appear.
+// prodColorMap tracks: { 'SG': 0, 'HP': 1, 'UA': 2, ... }
+// so the same product always gets the same color regardless of
+// which month or DC you're viewing.
+const PROD_COLORS = ['prod-color-0','prod-color-1','prod-color-2','prod-color-3','prod-color-4','prod-color-5','prod-color-6','prod-color-7'];
+const DOT_COLORS  = ['#3b82f6','#16a34a','#d97706','#db2777','#7c3aed','#ea580c','#059669','#dc2626'];
+let prodColorMap  = {};
+function getProdColorClass(id) {
+  if (prodColorMap[id] === undefined) prodColorMap[id] = Object.keys(prodColorMap).length % PROD_COLORS.length;
+  return PROD_COLORS[prodColorMap[id]];
+}
+function getChefDotColor(chefId) {
+  // Uses a simple hash of the Chef_ID string to pick a consistent dot color
+  // for the colored dots in the side panel's existing entries list.
+  let hash = 0;
+  for (let i = 0; i < chefId.length; i++) hash = chefId.charCodeAt(i) + ((hash << 5) - hash);
+  return DOT_COLORS[Math.abs(hash) % DOT_COLORS.length];
+}
+
+// ── STATE ─────────────────────────────────────────────────────
+// Single object holding all runtime data.
+// Centralizing it here means any function can read or update it,
+// and you can inspect the full app state by typing STATE in the
+// browser DevTools console.
+let STATE = {
+  user:            null,  // { role, email, chefId, chefName, dc }
+  dims:            null,  // { chefs[], stores[], products[], dcs[], coatSizes[], chefTypes[] }
+  currentDC:       '',    // topbar DC selection ('ALL' or a specific DC name)
+  currentMonth:    null,  // Date object set to 1st of the displayed month
+  scheduleData:    [],    // schedule entries loaded for the current calendar view
+  selectedDate:    null,  // 'YYYY-MM-DD' string of the currently open day panel
+  currentTab:      'schedule',
+  editingDimType:  null,  // 'chef' | 'store' | 'product' when a dim modal is open
+  editingDimRecord: null, // the record being edited (null when adding new)
+  chefEntries:     [],    // full unfiltered chef schedule from server
+  hideCompleted:   true,  // chef schedule toggle — hides Completed by default
+  calendarFilter:  { chef: '', product: '' }  // topbar calendar filter dropdowns
+};
+
+// ── DEMO MODE ─────────────────────────────────────────────────
+// This is a portfolio demo. Auth is bypassed entirely.
+// The intro modal lets visitors choose Operator or Chef view.
+// Write operations are blocked server-side (no valid session),
+// and also disabled in the UI via STATE.demoMode = true.
+// ──────────────────────────────────────────────────────────────
+
+window.onload = () => {
+  // Show the demo intro modal immediately; init() runs after role selection
+  document.getElementById('demo-overlay').style.display = 'flex';
+};
+
+function enterDemoAs(role) {
+  document.getElementById('demo-overlay').style.display = 'none';
+  document.getElementById('loading-screen').style.display = 'flex';
+
+  if (role === 'operator') {
+    STATE.user = { role: 'operator', email: 'demo@harvestandco.com', name: 'Demo Operator', demoMode: true };
+  } else {
+    STATE.user = { role: 'chef', email: 'jordan.patel@harvestandco.com', chefId: 'C001', chefName: 'Jordan Patel', dc: 'Austin', demoMode: true };
+  }
+  STATE.demoMode = true;
+  init();
+}
+
+// Resets runtime state and brings back the intro modal so a demo
+// visitor can switch between Operator and Chef view without reloading.
+function exitDemoView() {
+  STATE.user           = null;
+  STATE.currentDC      = '';
+  STATE.currentMonth   = null;
+  STATE.scheduleData   = [];
+  STATE.selectedDate   = null;
+  STATE.currentTab     = 'schedule';
+  STATE.editingDimType = null;
+  STATE.editingDimRecord = null;
+  STATE.chefEntries    = [];
+  STATE.hideCompleted  = true;
+  STATE.calendarFilter = { chef: '', product: '' };
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('demo-overlay').style.display = 'flex';
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+// Loads dimension data then builds the UI based on STATE.user.role.
+// In demo mode STATE.user is already set before init() is called.
+
+function init() {
+  google.script.run
+    .withSuccessHandler(dims => {
+      try {
+        STATE.dims = dims;
+        // Load saved DC — skip server call in demo mode
+        if (STATE.demoMode) {
+          STATE.currentDC = '';
+          setupUI();
+        } else {
+          google.script.run
+            .withSuccessHandler(dc => {
+              STATE.currentDC = dc || '';
+              setupUI();
+            })
+            .withFailureHandler(() => {
+              STATE.currentDC = '';
+              setupUI();
+            })
+            .getSavedDC();
+        }
+      } catch(e) {
+        console.error('Error in init successHandler:', e.message, e.stack);
+        document.getElementById('loading-screen').style.display = 'none';
+        document.getElementById('app').style.display = 'flex';
+        document.querySelector('.main').innerHTML = `<div style="padding:40px;font-family:monospace;color:red;font-size:12px">Init error: ${e.message}<br><br>${e.stack}</div>`;
+      }
+    })
+    .withFailureHandler(err => {
+      document.getElementById('loading-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      document.querySelector('.main').innerHTML = `
+        <div style="max-width:520px;margin:60px auto;text-align:center">
+          <div style="font-size:32px;margin-bottom:16px">⚠️</div>
+          <div style="font-size:16px;font-weight:600;color:var(--green-800);margin-bottom:12px">Failed to load app data</div>
+          <div style="background:var(--warm-100);border:1px solid var(--border);border-radius:var(--radius);padding:12px;font-family:var(--font-mono);font-size:12px;color:var(--red);text-align:left;word-break:break-all">
+            ${err.message || String(err)}
+          </div>
+          <div style="font-size:12px;color:var(--warm-500);margin-top:12px">Check the Google Sheet for malformed data in DIM_Chef, DIM_Product, or DIM_Store.</div>
+        </div>`;
+    })
+    .getDimData();
+}
+
+// Routes to the correct view based on the user's role.
+// Called once after both getUserContext and getDimData have returned.
+function setupUI() {
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('topbar-user').textContent = STATE.demoMode ? '🔵 Demo Mode' : (STATE.user.email || '');
+  document.getElementById('topbar-switch-view').style.display = STATE.demoMode ? 'inline-block' : 'none';
+  if (STATE.user.role === 'denied') setupDeniedView();
+  else if (STATE.user.role === 'chef') setupChefView();
+  else setupOperatorView();
+}
+
+// ── DENIED VIEW ───────────────────────────────────────────────
+function setupDeniedView() {
+  document.getElementById('main-nav').innerHTML = '';
+  document.getElementById('dc-selector').style.display = 'none';
+
+  const appUrl     = encodeURIComponent(window.location.href);
+  const switchUrl  = 'https://accounts.google.com/AccountChooser?continue=' + appUrl;
+
+  document.querySelector('.main').innerHTML = `
+    <div style="max-width:440px;margin:60px auto;text-align:center">
+      <div style="font-size:40px;margin-bottom:16px">🔒</div>
+      <div style="font-size:18px;font-weight:600;color:var(--green-800);margin-bottom:10px">Account Not Recognized</div>
+      <div style="font-size:14px;color:var(--warm-500);line-height:1.7;margin-bottom:20px">
+        You are signed in as <strong>${STATE.user.email}</strong>, which does not have access to this app.<br><br>
+        If you have a Harvest &amp; Co account, try signing in with that instead.
+      </div>
+      <a href="${switchUrl}" style="display:inline-block;padding:10px 22px;background:var(--green-700);color:#fff;border-radius:6px;font-size:14px;font-weight:500;text-decoration:none;margin-bottom:24px">
+        Sign in with a different account
+      </a>
+      <div style="font-size:12px;color:var(--warm-400)">
+        Need access? Contact <a href="mailto:alex80ad@gmail.com" style="color:var(--green-700)">alex80ad@gmail.com</a>
+      </div>
+    </div>`;
+}
+
+// ── OPERATOR VIEW ─────────────────────────────────────────────
+// Builds the operator UI: nav buttons, DC dropdown, roster tables.
+// The DC dropdown gets an "All DCs" option plus each DC from dim data.
+// Product colors are pre-assigned so they're consistent before
+// any schedule data is loaded.
+function setupOperatorView() {
+  document.getElementById('main-nav').innerHTML = `
+    <button class="nav-btn active" id="nav-schedule" onclick="switchTab('schedule')">Schedule</button>
+    <button class="nav-btn" id="nav-roster" onclick="switchTab('roster')">Roster</button>`;
+  const dcSel = document.getElementById('dc-select');
+  const allOpt = document.createElement('option');
+  allOpt.value = 'ALL'; allOpt.textContent = 'All Regions';
+  dcSel.appendChild(allOpt);
+  STATE.dims.dcs.forEach(dc => {
+    const o = document.createElement('option'); o.value = dc; o.textContent = dc; dcSel.appendChild(o);
+  });
+  document.getElementById('dc-selector').style.display = 'flex';
+  document.getElementById('cal-filters').style.display = 'flex';
+  STATE.dims.products.forEach(p => getProdColorClass(p.Product_ID));
+  dcSel.value = STATE.currentDC || 'ALL'; onDCChange(dcSel.value, false);
+  populateRosterTables();
+  populateCalFilterDropdowns();
+  switchTab('schedule');
+}
+
+function onDCChange(dc, save) {
+  STATE.currentDC = dc || 'ALL';
+  if (save !== false) google.script.run.saveDC(STATE.currentDC);
+  document.getElementById('schedule-dc-required').style.display = 'none';
+  document.getElementById('schedule-content').style.display = 'block';
+  if (!STATE.currentMonth) { STATE.currentMonth = new Date(); STATE.currentMonth.setDate(1); }
+  renderMonth();
+  if (STATE.dims) { populateRosterTables(); populateCalFilterDropdowns(); }
+}
+
+function switchTab(tab) {
+  STATE.currentTab = tab; closePanel();
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  const nb = document.getElementById('nav-' + tab); if (nb) nb.classList.add('active');
+}
+
+// ── MONTH CALENDAR ────────────────────────────────────────────
+// The calendar always shows full Mon-Sun weeks, so it includes
+// days from the previous and next month to fill out the grid.
+// getMonthRange() calculates the full visible range.
+// renderMonth() fetches data from the server then calls buildMonthGrid().
+// buildMonthGrid() creates the day cells from STATE.scheduleData.
+function changeMonth(dir) { STATE.currentMonth.setMonth(STATE.currentMonth.getMonth() + dir); STATE.selectedDate = null; STATE.calendarFilter = { chef: '', product: '' }; if(document.getElementById('cal-filter-chef')) document.getElementById('cal-filter-chef').value=''; if(document.getElementById('cal-filter-product')) document.getElementById('cal-filter-product').value=''; closePanel(); renderMonth(); }
+function goToToday() { STATE.currentMonth = new Date(); STATE.currentMonth.setDate(1); STATE.selectedDate = null; closePanel(); renderMonth(); }
+// Formats a Date object as 'YYYY-MM-DD' — used everywhere dates are compared as strings
+function formatDate(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+
+function getMonthRange(m) {
+  const first = new Date(m.getFullYear(), m.getMonth(), 1);
+  const last  = new Date(m.getFullYear(), m.getMonth()+1, 0);
+  const sd = first.getDay(), db = sd === 0 ? 6 : sd - 1;
+  const rs = new Date(first); rs.setDate(rs.getDate() - db);
+  const ed = last.getDay(), df = ed === 0 ? 0 : 7 - ed;
+  const re = new Date(last); re.setDate(re.getDate() + df);
+  return { first, last, rs, re };
+}
+
+function renderMonth() {
+  const m = STATE.currentMonth;
+  document.getElementById('month-label').textContent = m.toLocaleDateString('en-US', { month:'long', year:'numeric' });
+  const { rs, re } = getMonthRange(m);
+  google.script.run
+    .withSuccessHandler(data => { STATE.scheduleData = data; buildMonthGrid(); if (STATE.selectedDate) { populatePanelExisting(STATE.selectedDate); populatePanelForm(); } })
+    .withFailureHandler(handleError)
+    .getScheduleForRange(STATE.currentDC, formatDate(rs), formatDate(re));
+}
+
+function buildMonthGrid() {
+  const m = STATE.currentMonth;
+  const { first, last, rs, re } = getMonthRange(m);
+  const grid  = document.getElementById('month-grid');
+  const today = formatDate(new Date());
+  grid.innerHTML = '';
+  let d = new Date(rs);
+  while (d <= re) {
+    const ds      = formatDate(d);
+    const isOther   = d < first || d > last;
+    const isToday   = ds === today;
+    const isSel     = ds === STATE.selectedDate;
+    const isWeekend = d.getDay() === 6 || d.getDay() === 0;
+    const dayEntries = getFilteredSchedule().filter(e => e.date === ds);
+    const grouped = {};
+    dayEntries.forEach(e => {
+      const k = e.chefId + '|' + e.storeId;
+      if (!grouped[k]) grouped[k] = { ...e, products: [], productIds: [] };
+      grouped[k].products.push(e.productName);
+      grouped[k].productIds.push(e.productId);
+    });
+    const groups = Object.values(grouped);
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell' + (isOther?' other-month':'') + (isToday?' today':'') + (isSel?' selected':'') + (isWeekend&&!isOther?' weekend':'');
+    cell.dataset.date = ds;
+    cell.onclick = () => selectDay(ds);
+    const countBadge = groups.length > 0 ? `<span class="cal-entry-count">${groups.length}</span>` : '';
+    const maxVis = 3;
+    let chips = '';
+    groups.slice(0, maxVis).forEach(g => {
+      const firstProdId = g.productIds[0] || '';
+      let cc;
+      if (g.status === 'Cancelled') cc = 'prod-color-cancelled';
+      else if (g.status === 'Completed') cc = 'prod-color-done';
+      else cc = getProdColorClass(firstProdId);
+      const firstName = g.chefName.split(' ')[0];
+      const prodList  = g.productIds.join(', ');
+      chips += `<div class="cal-chip ${cc}">${firstName} &bull; ${g.storeName} &bull; ${prodList}</div>`;
+    });
+    if (groups.length > maxVis) chips += `<div class="cal-overflow">+${groups.length - maxVis} more</div>`;
+    cell.innerHTML = `<div class="cal-cell-date"><span class="cal-date-num">${d.getDate()}</span>${countBadge}</div><div class="cal-chips">${chips}</div>`;
+    grid.appendChild(cell);
+    d.setDate(d.getDate() + 1);
+  }
+}
+
+// ── CALENDAR FILTER ──────────────────────────────────────────
+function getFilteredSchedule() {
+  const { chef, product } = STATE.calendarFilter;
+  if (!chef && !product) return STATE.scheduleData;
+  return STATE.scheduleData.filter(e => {
+    if (chef    && String(e.chefId)    !== chef)    return false;
+    if (product && String(e.productId) !== product) return false;
+    return true;
+  });
+}
+
+function applyCalendarFilter() {
+  STATE.calendarFilter = {
+    chef:    document.getElementById('cal-filter-chef')?.value    || '',
+    product: document.getElementById('cal-filter-product')?.value || ''
+  };
+  buildMonthGrid();
+}
+
+function populateCalFilterDropdowns() {
+  const chefSel    = document.getElementById('cal-filter-chef');
+  const productSel = document.getElementById('cal-filter-product');
+  if (!chefSel || !productSel || !STATE.dims) return;
+  const chefOpts = STATE.dims.chefs
+    .filter(c => !STATE.currentDC || STATE.currentDC === 'ALL' || (c.Chef_DC||c.DC||'') === STATE.currentDC)
+    .map(c => `<option value="${c.Chef_ID}">${c.Chef_Name}</option>`).join('');
+  chefSel.innerHTML = '<option value="">All Chefs</option>' + chefOpts;
+  const prodOpts = STATE.dims.products
+    .filter(p => p.isActive)
+    .map(p => `<option value="${p.Product_ID}">${p.Product_Name}</option>`).join('');
+  productSel.innerHTML = '<option value="">All Products</option>' + prodOpts;
+  STATE.calendarFilter = { chef: '', product: '' };
+}
+
+// ── SIDE PANEL ────────────────────────────────────────────────
+// Opens when the operator clicks a calendar day cell.
+// The calendar stays fully visible behind the panel.
+// The panel has two sections:
+//   1. "Already Scheduled" — existing bookings for that day,
+//      grouped by chef+store, clickable to open the detail modal
+//   2. "Add New Entry" — the form to create new bookings
+//
+// The DC → Store → Chef cascade works as follows:
+//   - onEntryDCChange() re-filters stores AND chefs when DC changes
+//   - Chefs are filtered to their Home DC (confirmed cross-DC is not used)
+//   - Conflict warnings appear inline when a chef or store is already booked
+// ────────────────────────────────────────────────────────────── 
+function selectDay(ds) {
+  document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('selected'));
+  const cell = document.querySelector(`.cal-cell[data-date="${ds}"]`);
+  if (cell) cell.classList.add('selected');
+  STATE.selectedDate = ds;
+  openPanel(ds);
+}
+
+function openPanel(ds) {
+  const d = new Date(ds + 'T12:00:00');
+  document.getElementById('panel-date-label').textContent = d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+  populatePanelExisting(ds);
+  populatePanelForm();
+  document.getElementById('side-panel').classList.add('open');
+  document.getElementById('schedule-layout').classList.add('panel-open');
+}
+
+function closePanel() {
+  document.getElementById('side-panel').classList.remove('open');
+  document.getElementById('schedule-layout').classList.remove('panel-open');
+  document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('selected'));
+  STATE.selectedDate = null;
+}
+
+function populatePanelExisting(ds) {
+  const dayEntries = STATE.scheduleData.filter(e => e.date === ds);
+  const grouped = {};
+  dayEntries.forEach(e => {
+    const k = e.chefId + '|' + e.storeId;
+    if (!grouped[k]) grouped[k] = { ...e, products: [], productIds: [] };
+    grouped[k].products.push(e.productName);
+    grouped[k].productIds.push(e.productId);
+  });
+  const groups = Object.values(grouped);
+  const container = document.getElementById('panel-existing-list');
+  if (!groups.length) { container.innerHTML = '<div class="panel-existing-empty">No bookings yet</div>'; return; }
+  container.innerHTML = groups.map(g => {
+    const timeStr = g.timeStart ? `${g.timeStart}–${g.timeEnd}` : '';
+    return `
+      <div class="existing-entry" onclick="openDetailForGroup('${ds}','${g.chefId}','${g.storeId}')">
+        <div class="existing-chef-dot" style="background:${getChefDotColor(g.chefId)}"></div>
+        <div class="existing-entry-info">
+          <div class="existing-chef-name">${g.chefName}${timeStr ? ' <span style="font-weight:400;color:var(--warm-500)">' + timeStr + '</span>' : ''}</div>
+          <div class="existing-store-name">${g.storeName}</div>
+          <div class="existing-products">${g.productIds.join(', ')}</div>
+        </div>
+        <div class="existing-status"><span class="status-badge status-${(g.status||'').toLowerCase()}">${g.status}</span></div>
+      </div>`;
+  }).join('');
+}
+
+function populatePanelForm() {
+  // Show the active DC as a read-only label — no separate DC input
+  const dcDisplay = document.getElementById('entry-dc-display');
+  if (dcDisplay) dcDisplay.textContent = STATE.currentDC === 'ALL' ? 'Please select a specific Region in the top bar first' : STATE.currentDC;
+
+  populateStoreDropdown();
+  populateChefDropdown();
+  populateProductCheckboxes();
+
+  document.getElementById('entry-time-start').value = '10:00';
+  document.getElementById('entry-time-end').value   = '18:00';
+  document.getElementById('entry-status').value     = 'Scheduled';
+  document.getElementById('entry-notes').value      = '';
+  document.getElementById('chef-conflict-warn').classList.remove('visible');
+  document.getElementById('store-conflict-warn').classList.remove('visible');
+  // Disable save if no specific DC is selected
+  document.getElementById('panel-save-btn').disabled = (STATE.currentDC === 'ALL' || !STATE.currentDC);
+}
+
+// onEntryDCChange is no longer needed since DC comes from the topbar,
+// but kept here as a no-op in case anything still references it
+function onEntryDCChange() {}
+
+function populateStoreDropdown() {
+  // Filter stores using the topbar DC, not a panel dropdown
+  const dc = STATE.currentDC;
+  const ss = document.getElementById('entry-store');
+  ss.innerHTML = '<option value="">Select store...</option>';
+  STATE.dims.stores
+    .filter(s => { if (s.Active === 'N' || s.Active === false) return false; return dc === 'ALL' || !dc || s.DC === dc; })
+    .sort((a,b) => (a['Store Name']||'').localeCompare(b['Store Name']||''))
+    .forEach(s => { const o = document.createElement('option'); o.value = s.Store_ID; o.textContent = s['Store Name'] + ' (' + (s.City||'') + ', ' + (s.State||'') + ')'; ss.appendChild(o); });
+}
+
+function populateChefDropdown() {
+  // Filter chefs whose Home DC matches the topbar DC
+  const dc = STATE.currentDC;
+  const cs = document.getElementById('entry-chef');
+  cs.innerHTML = '<option value="">Select chef...</option>';
+  STATE.dims.chefs
+    .filter(c => {
+      if (c.Active === false || String(c.Active).toLowerCase() === 'false') return false;
+      if (!dc || dc === 'ALL') return true;
+      return (c.Chef_DC || c.DC || '') === dc;
+    })
+    .forEach(c => { const o = document.createElement('option'); o.value = c.Chef_ID; o.textContent = c.Chef_Name + ' (' + (c.Chef_DC||c.DC||'') + ')'; cs.appendChild(o); });
+}
+
+function populateProductCheckboxes() {
+  const pb = document.getElementById('entry-products');
+  pb.innerHTML = '';
+  STATE.dims.products
+    .filter(p => p.isActive)
+    .forEach(p => {
+      const l = document.createElement('label');
+      l.className = 'product-cb-item';
+      l.innerHTML = `<input type="checkbox" value="${p.Product_ID}"><span>${p.Product_Name}</span>`;
+      pb.appendChild(l);
+    });
+}
+
+function checkChefConflict() {
+  const chefId = document.getElementById('entry-chef').value;
+  const ds = STATE.selectedDate;
+  const warn = document.getElementById('chef-conflict-warn');
+  if (!chefId || !ds) { warn.classList.remove('visible'); return; }
+  const existing = STATE.scheduleData.filter(e => e.date === ds && e.chefId === chefId && e.status !== 'Cancelled');
+  if (existing.length) { warn.textContent = 'Already scheduled at: ' + [...new Set(existing.map(e=>e.storeName))].join(', '); warn.classList.add('visible'); }
+  else warn.classList.remove('visible');
+}
+
+function checkStoreConflict() {
+  const storeId = document.getElementById('entry-store').value;
+  const ds = STATE.selectedDate;
+  const warn = document.getElementById('store-conflict-warn');
+  if (!storeId || !ds) { warn.classList.remove('visible'); return; }
+  const existing = STATE.scheduleData.filter(e => e.date === ds && e.storeId === storeId && e.status !== 'Cancelled');
+  if (existing.length) { warn.textContent = 'Already has a visit from: ' + [...new Set(existing.map(e=>e.chefName))].join(', '); warn.classList.add('visible'); }
+  else warn.classList.remove('visible');
+}
+
+function submitEntry() {
+  const entryDC   = STATE.currentDC;  // always use the topbar DC
+  const storeId   = document.getElementById('entry-store').value;
+  const chefId    = document.getElementById('entry-chef').value;
+  const status    = document.getElementById('entry-status').value;
+  const timeStart = document.getElementById('entry-time-start').value;
+  const timeEnd   = document.getElementById('entry-time-end').value;
+  const notes     = document.getElementById('entry-notes').value;
+  const ds        = STATE.selectedDate;
+  const products  = Array.from(document.querySelectorAll('#entry-products input:checked')).map(cb => cb.value);
+
+  if (!entryDC || entryDC === 'ALL') { showToast('Please select a specific Region in the top bar first.', 'error'); return; }
+  if (!storeId)         { showToast('Please select a store.',              'error'); return; }
+  if (!chefId)          { showToast('Please select a chef.',               'error'); return; }
+  if (!products.length) { showToast('Please select at least one product.', 'error'); return; }
+
+  const entries = products.map(pid => ({ dc: entryDC, date: ds, chefId, storeId, productId: pid, status, timeStart, timeEnd, notes }));
+  document.getElementById('panel-save-btn').disabled = true;
+
+  if (STATE.demoMode) {
+    document.getElementById('panel-save-btn').disabled = false;
+    showToast('Write operations are disabled in demo mode.', 'error');
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(res => {
+      let msg = res.created + ' entr' + (res.created===1?'y':'ies') + ' saved.';
+      if (res.skipped > 0) msg += ' (' + res.skipped + ' duplicate' + (res.skipped>1?'s':'') + ' skipped)';
+      showToast(msg);
+      refreshCalendarKeepPanel(ds);
+    })
+    .withFailureHandler(err => { document.getElementById('panel-save-btn').disabled = false; handleError(err); })
+    .createScheduleEntries(entries);
+}
+
+function refreshCalendarKeepPanel(ds) {
+  const { rs, re } = getMonthRange(STATE.currentMonth);
+  google.script.run
+    .withSuccessHandler(data => {
+      STATE.scheduleData = data;
+      buildMonthGrid();
+      const cell = document.querySelector(`.cal-cell[data-date="${ds}"]`);
+      if (cell) cell.classList.add('selected');
+      populatePanelExisting(ds);
+      document.getElementById('panel-save-btn').disabled = false;
+      document.querySelectorAll('#entry-products input').forEach(cb => cb.checked = false);
+      document.getElementById('entry-chef').value  = '';
+      document.getElementById('entry-store').value = '';
+      document.getElementById('entry-notes').value = '';
+      populateStoreDropdown(); populateChefDropdown();
+      document.getElementById('chef-conflict-warn').classList.remove('visible');
+      document.getElementById('store-conflict-warn').classList.remove('visible');
+    })
+    .withFailureHandler(handleError)
+    .getScheduleForRange(STATE.currentDC, formatDate(rs), formatDate(re));
+}
+
+// ── DETAIL MODAL ──────────────────────────────────────────────
+// Opens when an existing booking is clicked in the panel's
+// "Already Scheduled" list.
+//
+// From this modal an operator can:
+//   - Change the product via dropdown (Scenario 2 — store swaps product)
+//   - Edit start/end times
+//   - Reschedule to a different date
+//   - Add or edit notes
+//   - Change status (Scheduled → Confirmed → Completed, or Cancel)
+//   - Delete the entry permanently
+//
+// "Save Changes" handles all edits in one click via updateScheduleEntry()
+// which accepts only the fields that changed.
+// ──────────────────────────────────────────────────────────────
+function openDetailForGroup(ds, chefId, storeId) {
+  const entries = STATE.scheduleData.filter(e => e.date === ds && e.chefId === chefId && e.storeId === storeId);
+  if (!entries.length) return;
+  const e = entries[0];
+  const d = new Date(ds + 'T12:00:00');
+  const timeStr = e.timeStart ? e.timeStart + ' – ' + e.timeEnd : 'Not set';
+
+  // Product rows — existing rows get a dropdown + remove button.
+  // New product rows (added via + Add Product) get a blank dropdown
+  // and are written as new FACT_Schedule entries on Save.
+  // Rows marked for removal are soft-deleted on Save.
+  // STATE.detailRemovedIds tracks which existing IDs to soft-delete.
+  STATE.detailRemovedIds = [];
+  STATE.detailNewProducts = [];
+
+  const allProductOpts = STATE.dims.products
+    .map(p => `<option value="${p.Product_ID}">${p.Product_Name}</option>`).join('');
+
+  function buildProductRow(en) {
+    const opts = STATE.dims.products
+      .map(p => `<option value="${p.Product_ID}" ${p.Product_ID===en.productId?'selected':''}>${p.Product_Name}</option>`).join('');
+    return `
+      <div class="product-edit-row" id="prow-${en.id}" data-id="${en.id}">
+        <select class="form-control" id="prod-sel-${en.id}" style="flex:1;font-size:12px">${opts}</select>
+        <span class="status-badge status-${(en.status||'').toLowerCase()}" style="white-space:nowrap">${en.status}</span>
+        <button type="button" class="btn btn-danger btn-sm prod-remove-btn" onclick="removeProductRow('${en.id}',false)" title="Remove product">&#10005;</button>
+      </div>`;
+  }
+
+  const productRows = entries.map(en => buildProductRow(en)).join('');
+
+  // Normalise times to HH:MM 24hr format for the time input elements.
+  // e.timeStart may be '10:00 AM', '10:00', or '' depending on how
+  // it was stored. The input type="time" element requires HH:MM only.
+  function to24hr(t) {
+    if (!t) return '';
+    const ampm = String(t).trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (ampm) {
+      let h = parseInt(ampm[1], 10);
+      const mins = ampm[2];
+      const period = ampm[3].toUpperCase();
+      if (period === 'AM' && h === 12) h = 0;
+      if (period === 'PM' && h !== 12) h += 12;
+      return String(h).padStart(2,'0') + ':' + mins;
+    }
+    return String(t).substring(0, 5);
+  }
+  const timeStartVal = to24hr(e.timeStart) || '10:00';
+  const timeEndVal   = to24hr(e.timeEnd)   || '18:00';
+
+  document.getElementById('detail-body').innerHTML = `
+    <div class="detail-row"><span class="detail-label">Date</span><span>${d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}</span></div>
+    <div class="detail-row"><span class="detail-label">Time</span>
+      <div style="display:flex;gap:6px;align-items:center;flex:1">
+        <input type="time" class="form-control" id="detail-time-start" value="${timeStartVal}" style="width:120px">
+        <span style="color:var(--warm-500)">to</span>
+        <input type="time" class="form-control" id="detail-time-end" value="${timeEndVal}" style="width:120px">
+      </div>
+    </div>
+    <div class="detail-row"><span class="detail-label">Chef</span><span>${e.chefName}</span></div>
+    <div class="detail-row"><span class="detail-label">Store</span><span>${e.storeName}</span></div>
+    <div class="detail-row"><span class="detail-label">Region</span><span>${e.dc}</span></div>
+    <div class="detail-row" style="align-items:flex-start">
+      <span class="detail-label">Products</span>
+      <div style="flex:1">
+        <div id="product-edit-list">${productRows}</div>
+        <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px;width:100%" onclick="addNewProductRow()">+ Add Product</button>
+        <div style="font-size:11px;color:var(--warm-500);margin-top:4px">Add or remove products, then click Save Changes.</div>
+      </div>
+    </div>
+    <div class="detail-row" style="margin-top:8px;align-items:flex-start">
+      <span class="detail-label">Reschedule</span>
+      <div style="flex:1;display:flex;gap:8px;align-items:center">
+        <input type="date" class="form-control" id="reschedule-date" value="${ds}" style="flex:1">
+      </div>
+    </div>
+    <div class="detail-row" style="align-items:flex-start">
+      <span class="detail-label">Notes</span>
+      <textarea class="form-control" id="detail-notes" rows="2" style="flex:1">${e.notes||''}</textarea>
+    </div>`;
+
+  // Footer: Status buttons + Save Changes + Cancel + Delete
+  const ids = entries.map(en => en.id);
+  let footer = '';
+
+  // Status options — each status has its own semantic colour class
+  ['Scheduled','Confirmed','Completed','Cancelled'].forEach(s => {
+    const isCurrent = entries.every(en => en.status === s);
+    if (!isCurrent) {
+      const cls = 'btn-status-' + s.toLowerCase();
+      footer += `<button class="btn ${cls} btn-sm" onclick="setGroupStatus('${s}')">Mark ${s}</button>`;
+    }
+  });
+
+  STATE.detailEntries = entries;
+  STATE.detailIds = ids;
+
+  footer += `<button class="btn btn-primary btn-sm" onclick="saveDetailChanges()">Save Changes</button>`;
+  footer += `<button class="btn btn-danger btn-sm" onclick="confirmDelete()">Delete</button>`;
+
+  document.getElementById('detail-footer').innerHTML = footer;
+  openModal('modal-detail');
+}
+
+// Save time, product changes, reschedule, and notes in one click.
+// Handles three cases:
+//   1. Update existing rows (date, time, product, notes)
+//   2. Soft-delete removed rows (STATE.detailRemovedIds)
+//   3. Create new product rows (STATE.detailNewProducts)
+function saveDetailChanges() {
+  const entries      = STATE.detailEntries || [];
+  const newDate      = document.getElementById('reschedule-date').value;
+  const newTimeStart = document.getElementById('detail-time-start').value;
+  const newTimeEnd   = document.getElementById('detail-time-end').value;
+  const newNotes     = document.getElementById('detail-notes').value;
+  const removedIds   = STATE.detailRemovedIds  || [];
+  const newProds     = STATE.detailNewProducts || [];
+
+  if (!entries.length) { showToast('No entries to update.', 'error'); return; }
+  if (STATE.demoMode) { closeModal('modal-detail'); showToast('Write operations are disabled in demo mode.', 'error'); return; }
+
+  // Active entries = original entries minus removed ones
+  const activeEntries = entries.filter(en => !removedIds.includes(en.id));
+  if (!activeEntries.length && !newProds.length) {
+    showToast('Cannot remove all products. At least one is required.', 'error'); return;
+  }
+
+  const e = entries[0]; // use first entry for group-level fields
+  let ops = activeEntries.length + removedIds.length + (newProds.length ? 1 : 0);
+  let done = 0;
+  const finish = () => { done++; if (done === ops) { closeModal('modal-detail'); showToast('Demo updated.'); const rs2 = new Date(STATE.currentMonth); const re2 = new Date(STATE.currentMonth.getFullYear(), STATE.currentMonth.getMonth()+1, 0); google.script.run.withSuccessHandler(data => { STATE.scheduleData = data; buildMonthGrid(); if (STATE.selectedDate) populatePanelExisting(STATE.selectedDate); }).withFailureHandler(handleError).getScheduleForRange(STATE.currentDC, formatDate(rs2), formatDate(re2)); } };
+
+  // 1. Update existing active rows
+  activeEntries.forEach(en => {
+    const newProduct = document.getElementById('prod-sel-' + en.id)?.value || en.productId;
+    google.script.run
+      .withSuccessHandler(finish).withFailureHandler(handleError)
+      .updateScheduleEntry(en.id, { Date: newDate, Time_Start: newTimeStart, Time_End: newTimeEnd, Product_ID: newProduct, Notes: newNotes });
+  });
+
+  // 2. Soft-delete removed rows
+  removedIds.forEach(id => {
+    google.script.run
+      .withSuccessHandler(finish).withFailureHandler(handleError)
+      .deleteScheduleEntry(id);
+  });
+
+  // 3. Create new product rows — batch them in one createScheduleEntries call
+  if (newProds.length) {
+    const newEntries = newProds.map(pid => ({
+      dc:        e.dc,
+      date:      newDate,
+      chefId:    e.chefId,
+      storeId:   e.storeId,
+      productId: pid,
+      status:    e.status,
+      timeStart: newTimeStart,
+      timeEnd:   newTimeEnd,
+      notes:     newNotes
+    }));
+    google.script.run
+      .withSuccessHandler(finish).withFailureHandler(handleError)
+      .createScheduleEntries(newEntries);
+  }
+}
+
+// Remove an existing product row from the detail modal.
+// Adds the ID to STATE.detailRemovedIds and hides the row.
+// existingId is the Schedule_ID string; isNew=true for unsaved rows.
+function removeProductRow(rowId, isNew) {
+  if (isNew) {
+    // Remove from STATE.detailNewProducts and DOM
+    const idx = parseInt(rowId, 10);
+    STATE.detailNewProducts.splice(idx, 1);
+    document.getElementById('prow-new-' + rowId)?.remove();
+    // Re-index remaining new rows isn't needed — we read them fresh on save
+  } else {
+    STATE.detailRemovedIds.push(rowId);
+    const row = document.getElementById('prow-' + rowId);
+    if (row) { row.style.opacity = '0.4'; row.style.pointerEvents = 'none'; row.querySelector('.prod-remove-btn').textContent = 'Removed'; }
+  }
+}
+
+// Append a new blank product row to the detail modal product list.
+// New rows are tracked in STATE.detailNewProducts by index.
+function addNewProductRow() {
+  // Build set of already-used product IDs (existing active rows + already-added new rows)
+  const usedIds = new Set([
+    ...(STATE.detailEntries || []).filter(en => !STATE.detailRemovedIds.includes(en.id)).map(en => en.productId),
+    ...STATE.detailNewProducts
+  ]);
+  const available = STATE.dims.products.filter(p => !usedIds.has(p.Product_ID));
+  if (!available.length) { showToast('All products are already added.', 'error'); return; }
+
+  const idx  = STATE.detailNewProducts.length;
+  const opts = available.map(p => `<option value="${p.Product_ID}">${p.Product_Name}</option>`).join('');
+  const row  = document.createElement('div');
+  row.className   = 'product-edit-row';
+  row.id          = 'prow-new-' + idx;
+  row.dataset.new = 'true';
+  row.innerHTML   = `
+    <select class="form-control" id="prod-new-${idx}" style="flex:1;font-size:12px" onchange="STATE.detailNewProducts[${idx}]=this.value">
+      ${opts}
+    </select>
+    <button type="button" class="btn btn-danger btn-sm prod-remove-btn" onclick="removeProductRow('${idx}',true)" title="Remove">&#10005;</button>`;
+  document.getElementById('product-edit-list').appendChild(row);
+  // Default to first available product
+  const sel = document.getElementById('prod-new-' + idx);
+  STATE.detailNewProducts.push(sel ? sel.options[0].value : '');
+}
+
+function setGroupStatus(newStatus) {
+  const ids = STATE.detailIds || [];
+  if (!ids.length) return;
+  let remaining = ids.length;
+  ids.forEach(id => {
+    google.script.run
+      .withSuccessHandler(() => {
+        remaining--;
+        if (remaining === 0) {
+          showToast('Status updated to ' + newStatus + '.');
+          // Update detailEntries in STATE so the panel reflects the new status
+          STATE.detailEntries = (STATE.detailEntries || []).map(en => ({ ...en, status: newStatus }));
+          // Refresh status badges in the modal body
+          document.querySelectorAll('#detail-body .status-badge').forEach(el => {
+            el.className = 'status-badge status-' + newStatus.toLowerCase();
+            el.textContent = newStatus;
+          });
+          // Re-render footer buttons so current status button disappears
+          const footerIds = STATE.detailIds;
+          let newFooter = '';
+          ['Scheduled','Confirmed','Completed','Cancelled'].forEach(s => {
+            if (s !== newStatus) {
+              const cls = 'btn-status-' + s.toLowerCase();
+              newFooter += `<button class="btn ${cls} btn-sm" onclick="setGroupStatus('${s}')">Mark ${s}</button>`;
+            }
+          });
+          newFooter += `<button class="btn btn-primary btn-sm" onclick="saveDetailChanges()">Save Changes</button>`;
+          newFooter += `<button class="btn btn-danger btn-sm" onclick="confirmDelete()">Delete</button>`;
+          document.getElementById('detail-footer').innerHTML = newFooter;
+          // Refresh calendar in background so dot counts stay accurate
+          renderMonth();
+          STATE.scheduleData = STATE.scheduleData.map(en => STATE.detailIds.includes(en.id) ? { ...en, status: newStatus } : en);
+          if (STATE.selectedDate) populatePanelExisting(STATE.selectedDate);
+        }
+      })
+      .withFailureHandler(handleError)
+      .updateScheduleEntry(id, { Status: newStatus });
+  });
+}
+
+function confirmDelete() {
+  const ids = STATE.detailIds || [];
+  if (!ids.length) return;
+  if (!confirm('Mark ' + ids.length + ' entr' + (ids.length===1?'y':'ies') + ' as Deleted? This can be recovered by your administrator.')) return;
+  let remaining = ids.length;
+  ids.forEach(id => {
+    google.script.run
+      .withSuccessHandler(() => {
+        remaining--;
+        if (remaining === 0) {
+          closeModal('modal-detail');
+          showToast('Entry marked as Deleted.');
+          STATE.scheduleData = STATE.scheduleData.filter(en => !ids.includes(en.id));
+          renderMonth();
+          if (STATE.selectedDate) populatePanelExisting(STATE.selectedDate);
+        }
+      })
+      .withFailureHandler(handleError)
+      .deleteScheduleEntry(id);
+  });
+}
+
+
+// ── CHEF VIEW ─────────────────────────────────────────────────
+// Shown to users whose Google email matches an active row in DIM_Chef.
+// Has two sub-tabs:
+//   My Schedule — read-only list of upcoming demos (cancelled entries hidden)
+//                 Shows store address, time, store notes, products, and status
+//   My Info     — editable profile form
+//                 Chefs can update: phone, address, coat size, availability
+//                 Read-only fields: name, email, DC, chef type
+//
+// saveChefProfile() calls updateChefProfile() on the server which
+// enforces the editable field whitelist server-side as well.
+// ──────────────────────────────────────────────────────────────
+function setupChefView() {
+  const u    = STATE.user;
+  const chef = STATE.dims.chefs.find(c => c.Chef_ID === u.chefId) || {};
+  const initials = (chef.Chef_Name||'C').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+
+  document.getElementById('main-nav').innerHTML =
+    `<button class="nav-btn active" id="nav-myschedule" onclick="switchTab('myschedule')">My Schedule</button>
+    <button class="nav-btn" id="nav-info" onclick="openModal('modal-info')">Info</button>`;
+
+  // Store chefType on STATE.user so survey buttons can check it
+  STATE.user.chefType  = chef.Chef_Type  || '';
+  STATE.user.chefName  = chef.Chef_Name  || u.chefId;
+
+  document.getElementById('chef-header').innerHTML = `
+    <div class="chef-avatar">${initials}</div>
+    <div>
+      <div class="chef-name-display">${chef.Chef_Name||u.chefId}</div>
+      <div class="chef-meta">${chef.Chef_DC||chef.DC||''} &bull; ${chef.Chef_Type||''} &bull; ${u.email}</div>
+    </div>`;
+
+  // Populate profile form
+  populateChefProfileForm(chef);
+
+  // Populate coat size options
+  const coatSel = document.getElementById('prof-coat');
+  coatSel.innerHTML = '<option value="">Select...</option>';
+  (STATE.dims.coatSizes || ['S','M','L','XL','XXL']).forEach(s => {
+    const o = document.createElement('option');
+    o.value = s; o.textContent = s;
+    if (s === chef.Coat_Size) o.selected = true;
+    coatSel.appendChild(o);
+  });
+
+  google.script.run
+    .withSuccessHandler(renderChefSchedule)
+    .withFailureHandler(handleError)
+    .getChefSchedule(u.chefId);
+
+  switchTab('myschedule');
+}
+
+function populateChefProfileForm(chef) {
+  document.getElementById('prof-name').value         = chef.Chef_Name     || '';
+  document.getElementById('prof-email').value        = chef.Chef_Email    || '';
+  document.getElementById('prof-dc').value           = chef.Chef_DC || chef.DC || '';
+  document.getElementById('prof-type').value         = chef.Chef_Type     || '';
+  document.getElementById('prof-phone').value        = chef.Chef_Phone    || '';
+  document.getElementById('prof-address').value      = chef.Address       || '';
+  document.getElementById('prof-availability').value = chef.Availability  || '';
+}
+
+function switchChefTab(tab, btn) {
+  document.querySelectorAll('.chef-view-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('chef-tab-schedule').style.display = tab === 'schedule' ? 'block' : 'none';
+  document.getElementById('chef-tab-profile').style.display  = tab === 'profile'  ? 'block' : 'none';
+}
+
+function saveChefProfile() {
+  const btn = document.getElementById('prof-save-btn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+
+  const updates = {
+    Chef_Phone:   document.getElementById('prof-phone').value,
+    Address:      document.getElementById('prof-address').value,
+    Coat_Size:    document.getElementById('prof-coat').value,
+    Availability: document.getElementById('prof-availability').value
+  };
+
+  if (STATE.demoMode) {
+    btn.disabled = false; btn.textContent = 'Save Changes';
+    showToast('Write operations are disabled in demo mode.', 'error');
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(() => {
+      btn.disabled = false; btn.textContent = 'Save Changes';
+      showToast('Profile updated.');
+    })
+    .withFailureHandler(err => {
+      btn.disabled = false; btn.textContent = 'Save Changes';
+      handleError(err);
+    })
+    .updateChefProfile(STATE.user.chefId, updates);
+}
+
+function renderChefSchedule(entries) {
+  if (entries) STATE.chefEntries = entries;
+  const allEntries = STATE.chefEntries || [];
+  const visible = STATE.hideCompleted ? allEntries.filter(e => e.status !== 'Completed') : allEntries;
+  const btn = document.getElementById('chef-hide-completed-btn');
+  if (btn) btn.textContent = STATE.hideCompleted ? 'Show Completed' : 'Hide Completed';
+  const list = document.getElementById('chef-schedule-list');
+  if (!visible.length) {
+    list.innerHTML = STATE.hideCompleted && allEntries.length
+      ? `<div class="empty-state"><div class="empty-title">No upcoming demos</div><div style="font-size:13px;color:var(--warm-500);margin-top:4px">Tap "Show Completed" to see past demos</div></div>`
+      : `<div class="empty-state"><div class="empty-title">No scheduled visits</div></div>`;
+    return;
+  }
+  const groups = {};
+  visible.forEach(e => {
+    const k = e.date + '|' + e.storeId;
+    if (!groups[k]) groups[k] = [];
+    groups[k].push(e);
+  });
+
+  list.innerHTML = Object.values(groups).map(items => {
+    const first   = items[0];
+    const d       = new Date(first.date + 'T12:00:00');
+    const timeStr = first.timeStart ? first.timeStart + ' – ' + first.timeEnd : '';
+
+    return `
+      <div class="schedule-card${first.isPast ? ' past' : ''}">
+        <div class="scard-date">
+          <div class="scard-month">${d.toLocaleDateString('en-US',{month:'short'}).toUpperCase()}</div>
+          <div class="scard-day">${d.getDate()}</div>
+          <div class="scard-weekday">${d.toLocaleDateString('en-US',{weekday:'short'})}</div>
+          ${timeStr ? `<div class="scard-time">${timeStr}</div>` : ''}
+        </div>
+        <div>
+          <div style="font-size:14px;font-weight:600">${first.storeName}</div>
+          <div style="font-size:12px;color:var(--warm-700);margin-top:2px">${first.storeAddress}</div>
+          <div style="font-size:12px;color:var(--warm-500);margin-top:1px">
+            ${[first.storeCity, first.storeState, first.storeZip].filter(Boolean).join(', ')} &bull; ${first.dc}
+          </div>
+          ${first.storeNotes ? `<div style="font-size:11px;color:var(--amber);margin-top:4px;font-style:italic"><span style="font-weight:600;not-italic">Store Notes:</span> ${first.storeNotes}</div>` : ''}
+          ${first.notes ? `<div style="font-size:11px;color:var(--blue);margin-top:4px;font-style:italic"><span style="font-weight:600">Shift Notes:</span> ${first.notes}</div>` : ''}
+          ${items.map(i => `
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:12px;color:var(--green-600);font-weight:500">${i.productName}</span>
+                ${i.productInfo ? `<a href="${i.productInfo}" target="_blank" rel="noopener noreferrer" style="font-size:10px;color:var(--blue);text-decoration:none;border:1px solid var(--blue-lt);background:var(--blue-lt);padding:1px 6px;border-radius:3px;font-weight:500">Info ↗</a>` : ''}
+              </div>
+              <span class="status-badge status-${(i.status||'').toLowerCase()}">${i.status}</span>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function toggleChefCompleted() {
+  STATE.hideCompleted = !STATE.hideCompleted;
+  renderChefSchedule(null);
+}
+
+
+// ── ROSTER ────────────────────────────────────────────────────
+// Manages the three dimension tables: Chefs, Stores, Products.
+// populateRosterTables() renders all three from STATE.dims.
+// openDimModal() opens the add/edit form for the correct type.
+// submitDim() sends the form values to saveDimRecord() on the server.
+//
+// Product table shows Active From / Active Until date columns
+// plus a computed active status dot (green = active, grey = inactive).
+// Active status is calculated from the date range, not a stored flag.
+//
+// Chef table shows Chef Type column.
+// Chef ID auto-increments from the highest existing C-number.
+// ──────────────────────────────────────────────────────────────
+function switchRosterTab(tab, btn) {
+  document.querySelectorAll('.roster-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  ['chefs','stores','products'].forEach(t => {
+    document.getElementById('roster-' + t).style.display = t === tab ? 'block' : 'none';
+  });
+}
+
+function populateRosterTables() {
+  // Read search and region filter values
+  const chefQ    = (document.getElementById('search-chefs')?.value         || '').toLowerCase();
+  const storeQ   = (document.getElementById('search-stores')?.value        || '').toLowerCase();
+  const prodQ    = (document.getElementById('search-products')?.value      || '').toLowerCase();
+
+  // CHEFS — filter by search text and region
+  const filteredChefs = STATE.dims.chefs.filter(c => {
+    if (STATE.currentDC && STATE.currentDC !== 'ALL' && (c.Chef_DC||c.DC||'') !== STATE.currentDC) return false;
+    if (!chefQ) return true;
+    return (c.Chef_Name||'').toLowerCase().includes(chefQ) ||
+           (c.Chef_ID||'').toLowerCase().includes(chefQ)   ||
+           (c.Chef_Email||'').toLowerCase().includes(chefQ);
+  });
+  document.getElementById('tbody-chefs').innerHTML = filteredChefs.length ? filteredChefs.map(c => `
+    <tr class="${c.Active===false||String(c.Active).toLowerCase()==='false'?'inactive':''}">
+      <td><code>${c.Chef_ID}</code></td><td>${c.Chef_Name}</td>
+      <td>${c.Chef_DC||c.DC||''}</td><td>${c.Chef_Type||''}</td>
+      <td>${c.Chef_Email||''}</td><td>${c.Chef_Phone||''}</td>
+      <td><span class="active-dot ${c.Active!==false&&String(c.Active).toLowerCase()!=='false'?'on':'off'}"></span></td>
+      <td><button class="btn btn-secondary btn-sm" onclick='openDimModal("chef",${JSON.stringify(c)})'>Edit</button></td>
+    </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--warm-500);padding:16px">No chefs found</td></tr>';
+
+  // STORES — filter by search text and region
+  const filteredStores = STATE.dims.stores.filter(s => {
+    if (STATE.currentDC && STATE.currentDC !== 'ALL' && (s.DC||'') !== STATE.currentDC) return false;
+    if (!storeQ) return true;
+    return (s['Store Name']||'').toLowerCase().includes(storeQ) ||
+           (String(s.Store_ID)||'').toLowerCase().includes(storeQ) ||
+           (s.City||'').toLowerCase().includes(storeQ);
+  });
+  document.getElementById('tbody-stores').innerHTML = filteredStores.length ? filteredStores.map(s => `
+    <tr class="${s.Active==='N'?'inactive':''}">
+      <td><code>${s.Store_ID}</code></td><td>${s['Store Name']}</td>
+      <td>${s.Region||''}</td><td>${s.DC||''}</td>
+      <td>${s.City||''}</td><td>${s.State||''}</td>
+      <td><span class="active-dot ${s.Active!=='N'?'on':'off'}"></span></td>
+      <td><button class="btn btn-secondary btn-sm" onclick='openDimModal("store",${JSON.stringify(s).replace(/'/g,"&#39;")})'>Edit</button></td>
+    </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--warm-500);padding:16px">No stores found</td></tr>';
+
+  // PRODUCTS — filter by search text, show date range + computed active status
+  function fmtDate(val) {
+    if (!val) return '—';
+    const d = new Date(String(val).substring(0,10) + 'T12:00:00');
+    return d.toLocaleDateString('en-US', { month:'numeric', day:'numeric', year:'numeric' });
+  }
+  const filteredProds = STATE.dims.products.filter(p =>
+    !prodQ ||
+    (p.Product_Name||'').toLowerCase().includes(prodQ) ||
+    (p.Product_ID||'').toLowerCase().includes(prodQ)
+  );
+  document.getElementById('tbody-products').innerHTML = filteredProds.length ? filteredProds.map(p => {
+    const activeFrom  = fmtDate(p.Active_Date);
+    const activeUntil = p.Inactive_Date ? fmtDate(p.Inactive_Date) : 'Ongoing';
+    return `
+    <tr class="${!p.isActive?'inactive':''}">
+      <td><code>${p.Product_ID}</code></td><td>${p.Product_Name}</td>
+      <td>${activeFrom}</td><td>${activeUntil}</td>
+      <td><span class="active-dot ${p.isActive?'on':'off'}"></span></td>
+      <td><button class="btn btn-secondary btn-sm" onclick='openDimModal("product",${JSON.stringify(p)})'>Edit</button></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--warm-500);padding:16px">No products found</td></tr>';
+}
+
+// ── DIM MODALS ────────────────────────────────────────────────
+function openDimModal(type, record) {
+  STATE.editingDimType   = type;
+  STATE.editingDimRecord = record || null;
+  const isEdit = !!record;
+  document.getElementById('dim-modal-title').textContent = (isEdit?'Edit ':'Add ')+{chef:'Chef',store:'Store',product:'Product'}[type];
+  const body = document.getElementById('dim-modal-body');
+
+  if (type === 'chef') {
+    // Auto-generate next Chef ID
+    let nextChefId = '';
+    if (!isEdit) {
+      const maxNum = STATE.dims.chefs.reduce((max, c) => {
+        const n = parseInt((c.Chef_ID||'').replace(/\D/g,''), 10);
+        return isNaN(n) ? max : Math.max(max, n);
+      }, 0);
+      nextChefId = 'C' + String(maxNum + 1).padStart(3, '0');
+    }
+    const dcOpts    = STATE.dims.dcs.map(dc => `<option value="${dc}" ${(record?.Chef_DC||record?.DC||'')=== dc?'selected':''}>${dc}</option>`).join('');
+    const typeOpts  = (STATE.dims.chefTypes||['Cook','Shift Lead','Manager']).map(t => `<option value="${t}" ${record?.Chef_Type===t?'selected':''}>${t}</option>`).join('');
+    const coatOpts  = (STATE.dims.coatSizes||['S','M','L','XL','XXL']).map(s => `<option value="${s}" ${record?.Coat_Size===s?'selected':''}>${s}</option>`).join('');
+    body.innerHTML = `
+      <div class="form-row"><label>Chef ID</label><input class="form-control" id="df-Chef_ID" value="${record?.Chef_ID||nextChefId}" ${isEdit?'readonly':''}></div>
+      <div class="form-row"><label>Name</label><input class="form-control" id="df-Chef_Name" value="${record?.Chef_Name||''}"></div>
+      <div class="form-row"><label>Home Region</label><select class="form-control" id="df-Chef_DC"><option value="">Select...</option>${dcOpts}</select></div>
+      <div class="form-row"><label>Chef Type</label><select class="form-control" id="df-Chef_Type"><option value="">Select...</option>${typeOpts}</select></div>
+      <div class="form-row"><label>Email</label><input class="form-control" id="df-Chef_Email" value="${record?.Chef_Email||''}"></div>
+      <div class="form-row"><label>Phone</label><input class="form-control" id="df-Chef_Phone" value="${record?.Chef_Phone||''}"></div>
+      <div class="form-row"><label>Address</label><input class="form-control" id="df-Address" value="${record?.Address||''}"></div>
+      <div class="form-row"><label>Coat Size</label><select class="form-control" id="df-Coat_Size"><option value="">Select...</option>${coatOpts}</select></div>
+      <div class="form-row"><label>Availability / Notes <span style="font-size:11px;font-weight:400;color:var(--amber);">&#9888; Visible to the chef</span></label><textarea class="form-control" id="df-Availability" rows="2">${record?.Availability||''}</textarea></div>
+      <div class="form-row"><label>Active</label><select class="form-control" id="df-Active">
+        <option value="true"  ${record?.Active!==false&&String(record?.Active).toLowerCase()!=='false'?'selected':''}>Active</option>
+        <option value="false" ${record?.Active===false||String(record?.Active).toLowerCase()==='false'?'selected':''}>Inactive</option>
+      </select></div>`;
+
+  } else if (type === 'product') {
+    const ad = record?.Active_Date   ? String(record.Active_Date).substring(0,10)   : '';
+    const id = record?.Inactive_Date ? String(record.Inactive_Date).substring(0,10) : '';
+    body.innerHTML = `
+      <div class="form-row"><label>Product ID</label><input class="form-control" id="df-Product_ID" value="${record?.Product_ID||''}" ${isEdit?'readonly':''}></div>
+      <div class="form-row"><label>Product Name</label><input class="form-control" id="df-Product_Name" value="${record?.Product_Name||''}"></div>
+      <div class="form-row"><label>Product Info URL</label><input class="form-control" id="df-Product_Info" value="${record?.Product_Info||''}" placeholder="https://..."></div>
+      <div class="form-row-2col">
+        <div><label style="display:block;font-size:11px;font-weight:600;color:var(--warm-700);margin-bottom:4px;text-transform:uppercase">Active From</label><input type="date" class="form-control" id="df-Active_Date" value="${ad}"></div>
+        <div><label style="display:block;font-size:11px;font-weight:600;color:var(--warm-700);margin-bottom:4px;text-transform:uppercase">Active Until</label><input type="date" class="form-control" id="df-Inactive_Date" value="${id}"></div>
+      </div>
+      <p style="font-size:11px;color:var(--warm-500);margin-top:-4px">Leave "Active Until" blank for products with no end date.</p>`;
+
+  } else { // store
+    const r = record || {};
+    const dcOpts = STATE.dims.dcs.map(dc => `<option value="${dc}" ${r.DC===dc?'selected':''}>${dc}</option>`).join('');
+    body.innerHTML = `
+      <div class="form-row"><label>Store ID</label><input class="form-control" id="df-Store_ID" value="${r.Store_ID||''}" ${isEdit?'readonly':''}></div>
+      <div class="form-row"><label>Store Name</label><input class="form-control" id="df-Store Name" value="${r['Store Name']||''}"></div>
+      <div class="form-row"><label>Region</label><select class="form-control" id="df-DC"><option value="">Select...</option>${dcOpts}</select></div>
+      <div class="form-row"><label>Street Address</label><input class="form-control" id="df-Street Address" value="${r['Street Address']||''}"></div>
+      <div class="form-row"><label>City</label><input class="form-control" id="df-City" value="${r.City||''}"></div>
+      <div class="form-row"><label>State</label><input class="form-control" id="df-State" value="${r.State||''}"></div>
+      <div class="form-row"><label>Zip</label><input class="form-control" id="df-Zip" value="${r.Zip||''}"></div>
+      <div class="form-row"><label>Country</label><input class="form-control" id="df-Country" value="${r.Country||'United States'}"></div>
+      <div class="form-row"><label>Demo Preferences</label><textarea class="form-control" id="df-Preferences" rows="2" placeholder="Store demo day preferences...">${r.Preferences||''}</textarea></div>
+      <div class="form-row"><label>Notes</label><textarea class="form-control" id="df-Notes" rows="2" placeholder="Communications and general info...">${r.Notes||''}</textarea></div>
+      <div class="form-row"><label>Active</label><select class="form-control" id="df-Active">
+        <option value="Y" ${r.Active!=='N'?'selected':''}>Active</option>
+        <option value="N" ${r.Active==='N'?'selected':''}>Inactive</option>
+      </select></div>`;
+  }
+
+  document.getElementById('dim-submit-btn').disabled = false;
+  openModal('modal-dim');
+}
+
+function submitDim() {
+  const type = STATE.editingDimType;
+  const fields = {
+    chef:    ['Chef_ID','Chef_Name','Chef_DC','Chef_Type','Chef_Email','Chef_Phone','Address','Coat_Size','Availability','Active'],
+    product: ['Product_ID','Product_Name','Product_Info','Active_Date','Inactive_Date'],
+    store:   ['Store_ID','Store Name','DC','Street Address','City','State','Zip','Country','County','Preferences','Notes','Active']
+  }[type];
+
+  const record = {};
+  fields.forEach(f => { const el = document.getElementById('df-' + f); if (el) record[f] = el.value; });
+  if (STATE.editingDimRecord) Object.keys(STATE.editingDimRecord).forEach(k => { if (record[k] === undefined) record[k] = STATE.editingDimRecord[k]; });
+
+  if (STATE.demoMode) {
+    closeModal('modal-dim');
+    showToast('Write operations are disabled in demo mode.', 'error');
+    return;
+  }
+  document.getElementById('dim-submit-btn').disabled = true;
+  google.script.run
+    .withSuccessHandler(res => {
+      closeModal('modal-dim');
+      showToast('Record ' + res.action + ' successfully.');
+      google.script.run.withSuccessHandler(dims => { STATE.dims = dims; populateRosterTables(); }).getDimData();
+    })
+    .withFailureHandler(err => { document.getElementById('dim-submit-btn').disabled = false; handleError(err); })
+    .saveDimRecord(type, record);
+}
+
+// ── HELPERS ───────────────────────────────────────────────────
+// openModal / closeModal — add/remove .open class which triggers CSS transition
+// showToast — creates a temporary notification at bottom-right, auto-fades after 3s
+// handleError — logs to console and shows an error toast; also ensures
+//               the loading screen is hidden in case an error occurs on startup
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => { o.addEventListener('click', e => { if (e.target===o) o.classList.remove('open'); }); });
+
+function showToast(msg, type) {
+  const tc = document.getElementById('toast-container');
+  const t  = document.createElement('div');
+  t.className = 'toast' + (type==='error'?' error':'');
+  t.textContent = msg; tc.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; t.style.transform='translateY(4px)'; t.style.transition='0.3s'; }, 2800);
+  setTimeout(() => tc.removeChild(t), 3100);
+}
+
+function handleError(err) {
+  console.error(err);
+  showToast('Error: ' + (err.message || String(err)), 'error');
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+}
+</script>
+
+
+</body></html>
