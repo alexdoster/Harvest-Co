@@ -17,6 +17,7 @@ This is a standalone portfolio piece, separate from any production Row 7 Seeds f
 
 ## Google Sheet
 
+**Sheet name:** Harvest & Co Data
 **Sheet ID:** `1W9vwgk2Dji6CpZezud4XjyIRSH1r0rTaTHQLlbIYDJs`
 
 **Tabs:**
